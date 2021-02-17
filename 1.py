@@ -2,10 +2,21 @@ import os
 import sys
 import pygame
 
+
+def load_level(filename):
+    filename = "data/" + filename
+    with open(filename, 'r') as mapFile:
+        level_map = [line for line in mapFile]
+
+    max_width = max(map(len, level_map))
+
+    return list(map(lambda x: x.ljust(max_width, ' '), level_map))
+
+
 pygame.init()
-size = width, height = 500, 500
+lev = load_level('level1.txt')
+size = width, height = len(lev[0]) * 50, len(lev) * 50
 screen = pygame.display.set_mode(size)
-screen.fill((255, 255, 255))
 FPS = 50
 clock = pygame.time.Clock()
 
@@ -79,10 +90,13 @@ def start_screen():
 
 
 tile_images = {
-    'wall': load_image('box.png'),
-    'empty': load_image('grass.png')
+    'wall': load_image('dirtMid.png'),
+    'empty': load_image('grass2.png')
+
 }
-player_image = load_image('mario.png')
+player_image = load_image('bunny1_stand.png')
+player_image2 = load_image('bunny1_walk1.png')
+player_image3 = load_image('bunny1_walk2.png')
 
 tile_width = tile_height = 50
 
@@ -100,35 +114,22 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.player_image = player_image
-        self.image2 = self.player_image
-        self.image1 = pygame.transform.flip(self.player_image, True, False)
+        # изображения для анимации
+        self.image1 = player_image
+        self.image2 = player_image2
+        self.image3 = player_image3
+        self.image4 = pygame.transform.flip(player_image2, True, False)
+        self.image5 = pygame.transform.flip(player_image3, True, False)
         self.image = self.image1
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
-
-    def update(self):
-        self.rect.y += 5
-        a = pygame.sprite.spritecollideany(self, a_group)
-        if a:
-            self.rect.y = a.rect.y - self.rect[3] + 1
-
-
-def load_level(filename):
-    filename = "data/" + filename
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
-
-    max_width = max(map(len, level_map))
-
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.':
+            if level[y][x] == ' ':
                 Tile('empty', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
@@ -138,58 +139,97 @@ def generate_level(level):
     return new_player, x, y
 
 
+def background_generation(background):
+    for i in background:
+        screen.blit(i, (0, 0))
+
+
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 a_group = pygame.sprite.Group()
+b_group = pygame.sprite.Group()
 running = True
 pygame.display.set_caption('Перемещение героя')
 start_screen()
 camera = Camera()
-player, level_x, level_y = generate_level(load_level('level1.txt'))
+player, level_x, level_y = generate_level(lev)
 u, d, l, r = False, False, False, False
+background = [pygame.transform.scale(load_image(f'bg_layer{i + 1}.png'), (width, height))
+              for i in range(4)]
 while running:
-    # camera.update(player);
-    # for sprite in all_sprites:
-    # camera.apply(sprite)
-    screen.fill((255, 255, 255))
+    background_generation(background)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                c = 0
-                if pygame.sprite.spritecollideany(player, a_group):
-                    u = True
-            if event.key == pygame.K_DOWN:
-                d = True
+                up = 0
+                u = True
             if event.key == pygame.K_RIGHT:
                 r = True
-                player.image = player.image1
+                rg = 0
+                rbl = False
             if event.key == pygame.K_LEFT:
                 l = True
-                player.image = player.image2
+                lg = 0
+                lbl = False
             player.y = player.rect.y
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
                 u = False
-            if event.key == pygame.K_DOWN:
-                d = False
             if event.key == pygame.K_RIGHT:
                 r = False
             if event.key == pygame.K_LEFT:
                 l = False
-    if u and c < 7:
-        c += 1
+    # cвободное падение
+    player.rect.y += 5
+    a = pygame.sprite.spritecollideany(player, a_group)
+    if a:
+        player.rect.y -= 5
+    # перемещение:
+    # прыжок
+    if u and up < 8:
+        up += 1
         player.rect.y -= 15
-    if d:
-        player.rect.y += 5
+        a = pygame.sprite.spritecollideany(player, a_group)
+        if a:
+            player.rect.y += 15
+    # право
     if r:
-        player.rect.x += 5
+        rg += 1
+        if rg % 3 == 0:
+            if rbl:
+                rbl = False
+                player.image = player.image2
+            else:
+                rbl = True
+                player.image = player.image3
+        player.rect.x += 10
+        a = pygame.sprite.spritecollideany(player, a_group)
+        if a:
+            player.rect.x -= 10
+    # лево
     if l:
-        player.rect.x -= 5
-    player.y = player.rect.y
-    player.update()
+        lg += 1
+        if lg % 3 == 0:
+            if lbl:
+                lbl = False
+                player.image = player.image4
+            else:
+                lbl = True
+                player.image = player.image5
+        player.rect.x -= 10
+        a = pygame.sprite.spritecollideany(player, a_group)
+        if a:
+            player.rect.x += 10
+    # просто стоит на месте
+    if not l and not r:
+        player.image = player.image1
+    # обновляем положение всех спрайтов
+    camera.update(player)
+    for sprite in all_sprites:
+        camera.apply(sprite)
     all_sprites.draw(screen)
     tiles_group.draw(screen)
     player_group.draw(screen)
