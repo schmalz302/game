@@ -309,6 +309,41 @@ def Pause():
         clock.tick(FPS)
 
 
+def Game_over():
+    sound2 = pygame.mixer.Sound('data/rollover1.wav')
+    fon = pygame.transform.scale(load_image('GAME_OVER.png'), (width, height))
+    fon1 = pygame.transform.scale(load_image('menu00.png'), (width, height))
+    a = [Button('a', 6, 4, 'game_over'), Button(3, 6, 8, 'game_over')]
+    c = 0
+    while True:
+        c += 1
+        if c < 150:
+            screen.blit(fon, (0, 0))
+        else:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                mouse = pygame.mouse.get_pos()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if 300 <= mouse[0] <= 590 and 200 <= mouse[1] <= 275:
+                        a[0].upd()
+                        sound2.play()
+                    elif 300 <= mouse[0] <= 590 and 400 <= mouse[1] <= 475:
+                        a[1].upd()
+                        sound2.play()
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if 300 <= mouse[0] <= 590 and 200 <= mouse[1] <= 275:
+                        a[0].upd()
+                        return
+                    elif 300 <= mouse[0] <= 590 and 400 <= mouse[1] <= 475:
+                        a[1].upd()
+                        terminate()
+            screen.blit(fon1, (0, 0))
+            game_over_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 class Button(pygame.sprite.Sprite):
     def __init__(self, a, pos_x, pos_y, c):
         if c == 'setting':
@@ -325,6 +360,8 @@ class Button(pygame.sprite.Sprite):
             super().__init__(pause_group)
         elif c == 'p':
             super().__init__(all_sprites)
+        elif c == 'game_over':
+            super().__init__(game_over_group)
         self.c = a
         self.a = load_image(f'menu1/menu{a}.png')
         self.b = load_image(f'menu2/menu{a}{a}.png')
@@ -349,13 +386,19 @@ tile_images = {
     'planet': [load_image(f'planet/planet{i}') for i in a],
     'sand': [load_image(f'sand/sand{i}') for i in a],
     'empty': load_image('grass2.png'),
-    'blok': load_image('grass2.png')}
+    'blok': load_image('grass2.png'),
+    'abyss': load_image('grass2.png'),
+    'chek': load_image('sign.png')}
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y, pos_blok=None):
-        super().__init__(tiles_group, all_sprites)
-        if tile_type != 'empty':
+        super().__init__(all_sprites)
+        if tile_type == 'abyss':
+            abyss_group.add(self)
+        elif tile_type == 'chek':
+            chek_group.add(self)
+        elif tile_type not in ['empty', 'abyss']:
             a_group.add(self)
         if pos_blok is not None:
             self.image = tile_images[tile_type][pos_blok]
@@ -466,7 +509,7 @@ class Yellow_enemy(pygame.sprite.Sprite):
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
+        super().__init__(all_sprites)
         # изображения для анимации
         self.image1 = player_image
         self.image2 = player_image2
@@ -484,7 +527,9 @@ class Player(pygame.sprite.Sprite):
         self.money = 0
         self.sound = pygame.mixer.Sound('data/cloth1.mp3')
         self.sound2 = pygame.mixer.Sound('data/марио.mp3')
-        self.sound2.set_volume(0.2)
+        self.sound2.set_volume(0.1)
+        self.x, self.y = self.rect.x, self.rect.y
+        self.check = []
 
     def update(self):
         self.c += 1
@@ -513,6 +558,9 @@ class Player(pygame.sprite.Sprite):
                 m = [str(0)] + m
             num1.upd(int(m[0]))
             num2.upd(int(m[1]))
+        a = pygame.sprite.spritecollideany(self, chek_group)
+        if a:
+            self.check.append(a)
 
 
 def generate_level(level, bb):
@@ -549,6 +597,10 @@ def generate_level(level, bb):
                 Yellow_enemy(x, y)
             elif level[y][x] == '*':
                 Tile('blok', x, y)
+            elif level[y][x] == '6':
+                Tile('abyss', x, y)
+            elif level[y][x] == 'g':
+                Tile('chek', x, y)
     life = Life(0, 0)
     mon, num1, num2, = Money(0, 1), Number(0.85, 1.1), Number(1.5, 1.1)
     button = Button(10, 15, 0, 'p')
@@ -557,11 +609,8 @@ def generate_level(level, bb):
 
 # все группы спрайтов
 all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
 red_enemy = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
 a_group = pygame.sprite.Group()
-b_group = pygame.sprite.Group()
 gold_group = pygame.sprite.Group()
 button_group = pygame.sprite.Group()
 setting_group = pygame.sprite.Group()
@@ -569,9 +618,14 @@ character_group = pygame.sprite.Group()
 surface_group = pygame.sprite.Group()
 pause_group = pygame.sprite.Group()
 fon_group = pygame.sprite.Group()
+abyss_group = pygame.sprite.Group()
+chek_group = pygame.sprite.Group()
+game_over_group = pygame.sprite.Group()
+sprites = [all_sprites, red_enemy, a_group, gold_group, button_group, setting_group,
+           character_group, surface_group, pause_group, fon_group, abyss_group, chek_group, game_over_group]
 running = True
 camera = Camera()
-u, d, l, r = False, False, False, False
+u, d, l, r, upbool = False, False, False, False, False
 # заставка
 sound1 = pygame.mixer.Sound('data/C418-Key.wav')
 s = sound1.play(-1)
@@ -580,6 +634,8 @@ s.pause()
 sound = pygame.mixer.Sound('data/для уровня.mp3')
 sound.set_volume(0.4)
 ss = sound.play(-1)
+sound2 = pygame.mixer.Sound('data/марио прыжок.mp3')
+sound2.set_volume(0.2)
 player_image = load_image(f'bunny{aa + 1}/bunny{aa + 1}_stand.png')
 player_image2 = load_image(f'bunny{aa + 1}/bunny{aa + 1}_walk1.png')
 player_image3 = load_image(f'bunny{aa + 1}/bunny{aa + 1}_walk2.png')
@@ -593,8 +649,10 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                up = 0
-                u = True
+                if upbool:
+                    sound2.play()
+                    up = 0
+                    u = True
             if event.key == pygame.K_RIGHT:
                 r = True
                 rg = 0
@@ -623,20 +681,47 @@ while running:
                 r = False
             if event.key == pygame.K_LEFT:
                 l = False
+    if life.c == 5:
+        ss.pause()
+        s.unpause()
+        Game_over()
+        u, d, l, r, upbool = False, False, False, False, False
+        for i in sprites:
+            for j in i:
+                i.remove(j)
+        aa, bb, cc = menu()
+        s.pause()
+        ss.unpause()
+        player_image = load_image(f'bunny{aa + 1}/bunny{aa + 1}_stand.png')
+        player_image2 = load_image(f'bunny{aa + 1}/bunny{aa + 1}_walk1.png')
+        player_image3 = load_image(f'bunny{aa + 1}/bunny{aa + 1}_walk2.png')
+        fon = pygame.transform.scale(load_image(f'fon/fon{cc + 1}.png'), (width, height))
+        player, level_x, level_y, life, num1, num2, button = generate_level(load_level('level1.txt'), b[bb])
+    if pygame.sprite.spritecollideany(player, abyss_group):
+        life.upd()
+        player.rect.x = player.check[-1].rect.x
+        player.rect.y = player.check[-1].rect.y - 30
     # cвободное падение
-    player.rect.y += 10
+    player.rect.y += 15
     a = pygame.sprite.spritecollideany(player, a_group)
     if a:
-        player.rect.y -= 10
+        upbool = True
+        while a:
+            player.rect.y -= 1
+            a = pygame.sprite.spritecollideany(player, a_group)
+    else:
+        upbool = False
     if not player.m:
         # перемещение:
         # прыжок
         if u and up < 4:
             up += 1
-            player.rect.y -= 40
+            player.rect.y -= 65
             a = pygame.sprite.spritecollideany(player, a_group)
             if a:
-                player.rect.y += 40
+                while a:
+                    player.rect.y += 1
+                    a = pygame.sprite.spritecollideany(player, a_group)
         # право
         if r:
             rg += 1
@@ -650,7 +735,9 @@ while running:
             player.rect.x += 10
             a = pygame.sprite.spritecollideany(player, a_group)
             if a:
-                player.rect.x -= 10
+                while a:
+                    player.rect.x -= 1
+                    a = pygame.sprite.spritecollideany(player, a_group)
         # лево
         if l:
             lg += 1
@@ -664,7 +751,9 @@ while running:
             player.rect.x -= 10
             a = pygame.sprite.spritecollideany(player, a_group)
             if a:
-                player.rect.x += 10
+                while a:
+                    player.rect.x += 1
+                    a = pygame.sprite.spritecollideany(player, a_group)
         # просто стоит на месте
         if not l and not r:
             player.image = player.image1
@@ -672,8 +761,6 @@ while running:
     all_sprites.update()
     camera.update(player)
     all_sprites.draw(screen)
-    tiles_group.draw(screen)
-    player_group.draw(screen)
     for sprite in all_sprites:
         if sprite.__class__.__name__ not in ['Number', 'Money', 'Life', 'Button']:
             camera.apply(sprite)
