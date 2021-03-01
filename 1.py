@@ -309,9 +309,9 @@ def Pause():
         clock.tick(FPS)
 
 
-def Game_over():
+def Game_over(a):
     sound2 = pygame.mixer.Sound('data/rollover1.wav')
-    fon = pygame.transform.scale(load_image('GAME_OVER.png'), (width, height))
+    fon = pygame.transform.scale(load_image(a), (width, height))
     fon1 = pygame.transform.scale(load_image('menu00.png'), (width, height))
     a = [Button('a', 6, 4, 'game_over'), Button(3, 6, 8, 'game_over')]
     c = 0
@@ -388,13 +388,16 @@ tile_images = {
     'empty': load_image('grass2.png'),
     'blok': load_image('grass2.png'),
     'abyss': load_image('grass2.png'),
+    'l': load_image('grass2.png'),
     'chek': load_image('sign.png')}
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y, pos_blok=None):
         super().__init__(all_sprites)
-        if tile_type == 'abyss':
+        if tile_type == 'l':
+            l_group.add(self)
+        elif tile_type == 'abyss':
             abyss_group.add(self)
         elif tile_type == 'chek':
             chek_group.add(self)
@@ -601,6 +604,8 @@ def generate_level(level, bb):
                 Tile('abyss', x, y)
             elif level[y][x] == 'g':
                 Tile('chek', x, y)
+            elif level[y][x] == 'l':
+                Tile('l', x, y)
     life = Life(0, 0)
     mon, num1, num2, = Money(0, 1), Number(0.85, 1.1), Number(1.5, 1.1)
     button = Button(10, 15, 0, 'p')
@@ -620,6 +625,7 @@ pause_group = pygame.sprite.Group()
 fon_group = pygame.sprite.Group()
 abyss_group = pygame.sprite.Group()
 chek_group = pygame.sprite.Group()
+l_group = pygame.sprite.Group()
 game_over_group = pygame.sprite.Group()
 sprites = [all_sprites, red_enemy, a_group, gold_group, button_group, setting_group,
            character_group, surface_group, pause_group, fon_group, abyss_group, chek_group, game_over_group]
@@ -681,10 +687,13 @@ while running:
                 r = False
             if event.key == pygame.K_LEFT:
                 l = False
-    if life.c == 5:
+    if life.c == 5 or pygame.sprite.spritecollideany(player, l_group):
         ss.pause()
         s.unpause()
-        Game_over()
+        if life.c == 5:
+            Game_over('GAME_OVER.png')
+        else:
+            Game_over('congrats.png')
         u, d, l, r, upbool = False, False, False, False, False
         for i in sprites:
             for j in i:
