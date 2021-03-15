@@ -628,7 +628,7 @@ chek_group = pygame.sprite.Group()
 l_group = pygame.sprite.Group()
 game_over_group = pygame.sprite.Group()
 sprites = [all_sprites, red_enemy, a_group, gold_group, button_group, setting_group,
-           character_group, surface_group, pause_group, fon_group, abyss_group, chek_group, game_over_group]
+           character_group, surface_group, pause_group, fon_group, abyss_group, chek_group, game_over_group, l_group]
 running = True
 camera = Camera()
 u, d, l, r, upbool = False, False, False, False, False
